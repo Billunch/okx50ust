@@ -4,19 +4,19 @@ import time
 import hmac
 import hashlib
 import json
+import os
 
 app = Flask(__name__)
 
-# OKX API 資訊
-OKX_API_KEY = "YOUR_API_KEY"
-OKX_SECRET = "YOUR_SECRET"
-OKX_PASSPHRASE = "YOUR_PASSPHRASE"
+# 從環境變數讀取 OKX 與 Telegram 設定
+OKX_API_KEY = os.getenv("OKX_API_KEY")
+OKX_SECRET = os.getenv("OKX_SECRET")
+OKX_PASSPHRASE = os.getenv("OKX_PASSPHRASE")
 OKX_BASE_URL = "https://www.okx.com"
-BET_AMOUNT_USDT = 50  # 每次下注金額
+BET_AMOUNT_USDT = 50
 
-# Telegram 訊息通知
-TELEGRAM_TOKEN = "7919123976:AAErKTsF6kGE0xON_jJ00e2xtKaCAwr8t7c"
-TELEGRAM_CHAT_ID = "5140400544"
+TELEGRAM_TOKEN = os.getenv("TELEGRAM_TOKEN")
+TELEGRAM_CHAT_ID = os.getenv("TELEGRAM_CHAT_ID")
 
 def send_telegram_message(message):
     url = f"https://api.telegram.org/bot{TELEGRAM_TOKEN}/sendMessage"
