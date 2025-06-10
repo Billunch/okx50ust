@@ -1,3 +1,4 @@
+
 from flask import Flask, request, jsonify
 import requests
 import time
@@ -21,6 +22,8 @@ TELEGRAM_CHAT_ID = os.getenv("TELEGRAM_CHAT_ID")
 
 # 發送 Telegram 訊息
 def send_telegram_message(message):
+    if not TELEGRAM_TOKEN or not TELEGRAM_CHAT_ID:
+        return
     url = f"https://api.telegram.org/bot{TELEGRAM_TOKEN}/sendMessage"
     payload = {
         "chat_id": TELEGRAM_CHAT_ID,
@@ -31,18 +34,18 @@ def send_telegram_message(message):
     except Exception as e:
         print(f"Telegram Error: {e}")
 
-# OKX 簽名
-def sign_request(timestamp, method, path, body, secret):
-    message = f'{timestamp}{method}{path}{body}'
-    return hmac.new(secret.encode(), message.encode(), hashlib.sha256).digest().hex()
-
 # 查詢即時價格
 def get_price(symbol):
     url = f"{OKX_BASE_URL}/api/v5/market/ticker?instId={symbol}"
     r = requests.get(url)
     return float(r.json()["data"][0]["last"])
 
-# 下單功能
+# 產生簽名
+def sign_request(timestamp, method, path, body, secret):
+    message = f'{timestamp}{method}{path}{body}'
+    return hmac.new(secret.encode(), message.encode(), hashlib.sha256).hexdigest()
+
+# 下單
 def place_order(symbol, side):
     price = get_price(symbol)
     size = round(BET_AMOUNT_USDT / price, 6)
@@ -59,7 +62,7 @@ def place_order(symbol, side):
         "ordType": "market",
         "sz": str(size)
     }
-    body_json = json.dumps(body)
+    body_json = json.dumps(body, separators=(',', ':'))
 
     sign = sign_request(timestamp, method, path, body_json, OKX_SECRET)
 
@@ -70,15 +73,6 @@ def place_order(symbol, side):
         "OK-ACCESS-PASSPHRASE": OKX_PASSPHRASE,
         "Content-Type": "application/json"
     }
-
-    # === DEBUG ===
-    print("====== DEBUG START ======")
-    print("timestamp:", timestamp)
-    print("sign:", sign)
-    print("headers:", headers)
-    print("body_json:", body_json)
-    print("url:", url)
-    print("====== DEBUG END ========")
 
     res = requests.post(url, headers=headers, data=body_json)
     res_json = res.json()
@@ -91,7 +85,7 @@ def place_order(symbol, side):
 
     return res_json
 
-# 接收 TradingView 訊號
+# Webhook 接收端
 @app.route("/", methods=["POST"])
 def webhook():
     data = request.json
@@ -104,7 +98,7 @@ def webhook():
     send_telegram_message(f"⚠️ Unknown signal: {signal}")
     return jsonify({"error": "invalid signal"})
 
-# Render 入口
+# Flask 主程序
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))
     app.run(host="0.0.0.0", port=port)
